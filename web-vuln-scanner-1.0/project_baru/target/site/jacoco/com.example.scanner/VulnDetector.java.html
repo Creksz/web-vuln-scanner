@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VulnDetector.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">web-vuln-scanner</a> &gt; <a href="index.source.html" class="el_package">com.example.scanner</a> &gt; <span class="el_source">VulnDetector.java</span></div><h1>VulnDetector.java</h1><pre class="source lang-java linenums">package com.example.scanner;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import java.util.regex.Pattern;
+
+/**
+ * Detector untuk vulnerability SQLi dan XSS berdasarkan response HTTP.
+ */
+<span class="fc" id="L10">public class VulnDetector {</span>
+    // Patterns untuk SQLi detection
+<span class="fc" id="L12">    private static final Pattern SQL_ERROR_PATTERN = Pattern.compile(</span>
+        &quot;SQL.*error|mysql_fetch|ORA-\\d+|warning.*mysql|PostgreSQL.*error|syntax error.*near&quot;,
+        Pattern.CASE_INSENSITIVE
+    );
+<span class="fc" id="L16">    private static final Pattern SQL_SUCCESS_PATTERN = Pattern.compile(</span>
+        &quot;admin|password|username|user|root|\\b[0-9a-f]{32}\\b&quot;,  // Hashes atau sensitive data
+        Pattern.CASE_INSENSITIVE
+    );
+
+    // Patterns untuk XSS: Malicious payload indicators
+<span class="fc" id="L22">    private static final Pattern XSS_MALICIOUS_PAYLOAD = Pattern.compile(</span>
+        &quot;&lt;script|alert\\$|onload=|onerror=|javascript:|svg|img.*onerror|body.*onload&quot;,
+        Pattern.CASE_INSENSITIVE
+    );
+
+    // Patterns untuk XSS execution di response
+<span class="fc" id="L28">    private static final Pattern XSS_EXECUTION_PATTERN = Pattern.compile(</span>
+        &quot;&lt;script.*&gt;.*alert|onload=.*alert|onerror=.*alert|javascript:.*alert&quot;,
+        Pattern.CASE_INSENSITIVE
+    );
+
+    /**
+     * Deteksi SQL Injection dari response (tidak berubah, sudah OK).
+     * @param response HTML/HTTP response dari server.
+     * @return VulnResult dengan type dan severity.
+     */
+    public VulnResult detectSQLi(String response) {
+<span class="pc bpc" id="L39" title="2 of 4 branches missed.">        if (response == null || response.isEmpty()) {</span>
+<span class="nc" id="L40">            return new VulnResult(&quot;None&quot;, &quot;Low&quot;);</span>
+        }
+
+        // Cek error patterns (high severity)
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        if (SQL_ERROR_PATTERN.matcher(response).find()) {</span>
+<span class="fc" id="L45">            return new VulnResult(&quot;SQLi&quot;, &quot;High&quot;);</span>
+        }
+
+        // Cek success patterns (medium severity, e.g., data dump)
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">        if (SQL_SUCCESS_PATTERN.matcher(response).find()) {</span>
+<span class="nc" id="L50">            return new VulnResult(&quot;SQLi&quot;, &quot;Medium&quot;);</span>
+        }
+
+        // No vuln
+<span class="fc" id="L54">        return new VulnResult(&quot;None&quot;, &quot;Low&quot;);</span>
+    }
+
+    /**
+     * Deteksi XSS dari response dan payload asli (updated: hindari false positive untuk benign input).
+     * @param response HTML response dari server.
+     * @param payload Payload yang dikirim (untuk cek reflection dan maliciousness).
+     * @return VulnResult dengan type dan severity.
+     */
+    public VulnResult detectXSS(String response, String payload) {
+<span class="pc bpc" id="L64" title="3 of 6 branches missed.">        if (response == null || response.isEmpty() || payload == null) {</span>
+<span class="nc" id="L65">            return new VulnResult(&quot;None&quot;, &quot;Low&quot;);</span>
+        }
+
+        // Parse HTML dengan Jsoup
+<span class="fc" id="L69">        Document doc = Jsoup.parse(response);</span>
+<span class="fc" id="L70">        String bodyText = doc.body().text();  // Clean text</span>
+<span class="fc" id="L71">        String bodyHtml = doc.body().html();  // Raw HTML</span>
+
+        // Step 1: Cek jika payload malicious (berisi indicators XSS)
+<span class="fc" id="L74">        boolean isMaliciousPayload = XSS_MALICIOUS_PAYLOAD.matcher(payload).find();</span>
+
+        // Step 2: Cek refleksi payload di response
+<span class="pc bpc" id="L77" title="1 of 4 branches missed.">        boolean isReflected = bodyText.contains(payload) || bodyHtml.contains(payload);</span>
+
+        // Step 3: Cek execution patterns di response (independen dari payload)
+<span class="fc" id="L80">        boolean hasExecution = XSS_EXECUTION_PATTERN.matcher(bodyHtml).find();</span>
+
+        // Logic deteksi:
+<span class="pc bpc" id="L83" title="1 of 4 branches missed.">        if (isMaliciousPayload &amp;&amp; isReflected) {</span>
+            // Malicious payload reflected → High XSS (clear vuln)
+<span class="fc" id="L85">            return new VulnResult(&quot;XSS&quot;, &quot;High&quot;);</span>
+<span class="pc bpc" id="L86" title="1 of 2 branches missed.">        } else if (hasExecution) {</span>
+            // Execution code di response (e.g., alert muncul) → Medium (potential)
+<span class="nc" id="L88">            return new VulnResult(&quot;XSS&quot;, &quot;Medium&quot;);</span>
+<span class="pc bpc" id="L89" title="2 of 4 branches missed.">        } else if (isReflected &amp;&amp; !isMaliciousPayload) {</span>
+            // Benign input reflected → No vuln (normal echo, seperti di test)
+<span class="fc" id="L91">            return new VulnResult(&quot;None&quot;, &quot;Low&quot;);</span>
+        }
+
+        // No vuln
+<span class="nc" id="L95">        return new VulnResult(&quot;None&quot;, &quot;Low&quot;);</span>
+    }
+
+    // Opsional: Method umum untuk detect multiple types
+    // public VulnResult detect(String response, String type, String payload) { ... }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

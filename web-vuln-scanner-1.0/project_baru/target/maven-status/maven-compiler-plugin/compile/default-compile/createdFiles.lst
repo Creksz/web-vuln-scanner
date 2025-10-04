@@ -1,0 +1,7 @@
+com\example\scanner\ScannerMain.class
+com\example\scanner\VulnResult.class
+com\example\scanner\HttpClientWrapper.class
+com\example\scanner\ReportGenerator.class
+com\example\scanner\ScannerMain$ScanTask.class
+com\example\scanner\PayloadManager.class
+com\example\scanner\VulnDetector.class

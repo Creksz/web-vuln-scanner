@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ScannerMain.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">web-vuln-scanner</a> &gt; <a href="index.source.html" class="el_package">com.example.scanner</a> &gt; <span class="el_source">ScannerMain.java</span></div><h1>ScannerMain.java</h1><pre class="source lang-java linenums">package com.example.scanner;
+
+import java.util.*;
+import java.util.concurrent.*;
+
+<span class="nc" id="L6">public class ScannerMain {</span>
+    public static void main(String[] args) {
+<span class="nc" id="L8">        Scanner inputScanner = new Scanner(System.in);</span>
+<span class="nc" id="L9">        System.out.print(&quot;Enter target URL (e.g., http://localhost/dvwa/vulnerabilities/sqli/): &quot;);</span>
+<span class="nc" id="L10">        String baseUrl = inputScanner.nextLine();</span>
+<span class="nc" id="L11">        System.out.print(&quot;Vuln type (SQLi or XSS): &quot;);</span>
+<span class="nc" id="L12">        String vulnType = inputScanner.nextLine().toUpperCase();</span>
+
+        try {
+            // Inisialisasi components (final untuk access di inner class)
+<span class="nc" id="L16">            final HttpClientWrapper http = new HttpClientWrapper();</span>
+<span class="nc" id="L17">            final PayloadManager payloads = new PayloadManager();</span>
+<span class="nc" id="L18">            final VulnDetector detector = new VulnDetector();</span>
+<span class="nc" id="L19">            final ReportGenerator reporter = new ReportGenerator();</span>
+<span class="nc" id="L20">            List&lt;VulnResult&gt; results = Collections.synchronizedList(new ArrayList&lt;&gt;());  // Thread-safe list</span>
+
+            // Opsional: Login ke DVWA untuk session
+            // http.login(&quot;http://localhost/dvwa/login.php&quot;, &quot;admin&quot;, &quot;password&quot;);
+            // System.out.println(&quot;Logged in to DVWA.&quot;);
+
+<span class="nc" id="L26">            List&lt;String&gt; payloadList = payloads.getPayloads(vulnType);</span>
+<span class="nc bnc" id="L27" title="All 2 branches missed.">            if (payloadList.isEmpty()) {</span>
+<span class="nc" id="L28">                System.out.println(&quot;No payloads for type: &quot; + vulnType);</span>
+<span class="nc" id="L29">                return;</span>
+            }
+
+            // Multithreading: Submit tasks
+<span class="nc" id="L33">            ExecutorService executor = Executors.newFixedThreadPool(5);  // 5 threads</span>
+<span class="nc" id="L34">            List&lt;Future&lt;VulnResult&gt;&gt; futures = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L35" title="All 2 branches missed.">            for (final String payload : payloadList) {  // final untuk lambda/inner access</span>
+<span class="nc" id="L36">                futures.add(executor.submit(new ScanTask(http, baseUrl, payload, vulnType, detector)));</span>
+<span class="nc" id="L37">            }</span>
+
+            // Collect results
+<span class="nc bnc" id="L40" title="All 2 branches missed.">            for (Future&lt;VulnResult&gt; future : futures) {</span>
+                try {
+<span class="nc" id="L42">                    VulnResult result = future.get(10, TimeUnit.SECONDS);  // Timeout 10s per task</span>
+<span class="nc bnc" id="L43" title="All 2 branches missed.">                    if (result != null) {</span>
+<span class="nc" id="L44">                        results.add(result);</span>
+<span class="nc" id="L45">                        System.out.println(&quot;Payload: &quot; + payloads + &quot; | Result: &quot; + result.getType() + &quot; (&quot; + result.getSeverity() + &quot;)&quot;);</span>
+                    }
+<span class="nc" id="L47">                } catch (TimeoutException e) {</span>
+<span class="nc" id="L48">                    System.err.println(&quot;Task timeout: &quot; + e.getMessage());</span>
+<span class="nc" id="L49">                } catch (ExecutionException | InterruptedException e) {</span>
+<span class="nc" id="L50">                    System.err.println(&quot;Thread error: &quot; + e.getMessage());</span>
+<span class="nc" id="L51">                    e.printStackTrace();</span>
+<span class="nc" id="L52">                }</span>
+<span class="nc" id="L53">            }</span>
+
+            // Shutdown executor
+<span class="nc" id="L56">            executor.shutdown();</span>
+            try {
+<span class="nc bnc" id="L58" title="All 2 branches missed.">                if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {</span>
+<span class="nc" id="L59">                    executor.shutdownNow();</span>
+                }
+<span class="nc" id="L61">            } catch (InterruptedException e) {</span>
+<span class="nc" id="L62">                executor.shutdownNow();</span>
+<span class="nc" id="L63">            }</span>
+
+            // Generate report
+<span class="nc bnc" id="L66" title="All 2 branches missed.">            if (!results.isEmpty()) {</span>
+<span class="nc" id="L67">                reporter.generateHTMLReport(results);</span>
+            } else {
+<span class="nc" id="L69">                System.out.println(&quot;No results found.&quot;);</span>
+            }
+
+<span class="nc" id="L72">        } catch (Exception e) {</span>
+<span class="nc" id="L73">            System.err.println(&quot;Main error: &quot; + e.getMessage());</span>
+<span class="nc" id="L74">            e.printStackTrace();</span>
+        } finally {
+<span class="nc" id="L76">            inputScanner.close();</span>
+        }
+<span class="nc" id="L78">    }</span>
+
+    // Inner class untuk scan task (Callable untuk return value)
+    private static class ScanTask implements Callable&lt;VulnResult&gt; {
+        private final HttpClientWrapper http;
+        private final String baseUrl;
+        private final String payload;
+        private final String vulnType;
+        private final VulnDetector detector;
+
+<span class="nc" id="L88">        public ScanTask(HttpClientWrapper http, String baseUrl, String payload, String vulnType, VulnDetector detector) {</span>
+<span class="nc" id="L89">            this.http = http;</span>
+<span class="nc" id="L90">            this.baseUrl = baseUrl;</span>
+<span class="nc" id="L91">            this.payload = payload;</span>
+<span class="nc" id="L92">            this.vulnType = vulnType;</span>
+<span class="nc" id="L93">            this.detector = detector;</span>
+<span class="nc" id="L94">        }</span>
+
+        @Override
+        public VulnResult call() throws Exception {
+            try {
+                String response;
+<span class="nc" id="L100">                Map&lt;String, String&gt; params = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L101">                params.put(&quot;Submit&quot;, &quot;Submit&quot;);</span>
+
+<span class="nc bnc" id="L103" title="All 2 branches missed.">                if (&quot;SQLI&quot;.equals(vulnType)) {</span>
+                    // GET untuk SQLi (query param)
+<span class="nc" id="L105">                    params.put(&quot;id&quot;, &quot;1&quot; + payload);</span>
+<span class="nc" id="L106">                    response = http.sendGet(baseUrl, params);</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">                } else if (&quot;XSS&quot;.equals(vulnType)) {</span>
+                    // POST untuk XSS reflected (form)
+<span class="nc" id="L109">                    params.put(&quot;name&quot;, payload);  // Sesuaikan param DVWA</span>
+<span class="nc" id="L110">                    response = http.sendPost(baseUrl, params);</span>
+                } else {
+<span class="nc" id="L112">                    throw new IllegalArgumentException(&quot;Unsupported vuln type: &quot; + vulnType);</span>
+                }
+
+                // Detect vuln
+                VulnResult result;
+<span class="nc bnc" id="L117" title="All 2 branches missed.">                if (&quot;SQLI&quot;.equals(vulnType)) {</span>
+<span class="nc" id="L118">                    result = detector.detectSQLi(response);</span>
+                } else {
+<span class="nc" id="L120">                    result = detector.detectXSS(response, payload);</span>
+                }
+<span class="nc" id="L122">                return result;</span>
+
+<span class="nc" id="L124">            } catch (Exception e) {</span>
+<span class="nc" id="L125">                System.err.println(&quot;Scan task error for payload '&quot; + payload + &quot;': &quot; + e.getMessage());</span>
+<span class="nc" id="L126">                return new VulnResult(&quot;Error&quot;, &quot;High&quot;);  // Fallback result</span>
+            }
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

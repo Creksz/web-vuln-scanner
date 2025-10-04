@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReportGenerator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">web-vuln-scanner</a> &gt; <a href="index.source.html" class="el_package">com.example.scanner</a> &gt; <span class="el_source">ReportGenerator.java</span></div><h1>ReportGenerator.java</h1><pre class="source lang-java linenums">package com.example.scanner;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.List;
+
+/**
+ * Generator untuk laporan scan vulnerability dalam format HTML.
+ */
+<span class="nc" id="L12">public class ReportGenerator {</span>
+    private static final String REPORT_FILE = &quot;scan-report.html&quot;;
+
+    /**
+     * Generate laporan HTML dari list hasil scan (dipanggil dari ScannerMain).
+     * @param results List VulnResult dari deteksi.
+     * @throws IOException Jika gagal tulis file.
+     */
+    public void generateHTMLReport(List&lt;VulnResult&gt; results) throws IOException {
+<span class="nc bnc" id="L21" title="All 4 branches missed.">        if (results == null || results.isEmpty()) {</span>
+<span class="nc" id="L22">            System.out.println(&quot;No results to report.&quot;);</span>
+<span class="nc" id="L23">            return;</span>
+        }
+
+<span class="nc" id="L26">        StringBuilder html = new StringBuilder();</span>
+<span class="nc" id="L27">        html.append(&quot;&lt;!DOCTYPE html&gt;&lt;html&gt;&lt;head&gt;&quot;);</span>
+<span class="nc" id="L28">        html.append(&quot;&lt;title&gt;Web Vulnerability Scan Report&lt;/title&gt;&quot;);</span>
+<span class="nc" id="L29">        html.append(&quot;&lt;style&gt;table {border-collapse: collapse; width: 100%;} th, td {border: 1px solid #ddd; padding: 8px; text-align: left;} th {background-color: #f2f2f2;} .high {color: red;} .medium {color: orange;} .low {color: green;}&lt;/style&gt;&quot;);</span>
+<span class="nc" id="L30">        html.append(&quot;&lt;/head&gt;&lt;body&gt;&quot;);</span>
+<span class="nc" id="L31">        html.append(&quot;&lt;h1&gt;Web Vulnerability Scan Report&lt;/h1&gt;&quot;);</span>
+<span class="nc" id="L32">        html.append(&quot;&lt;p&gt;Generated on: &quot;).append(new java.util.Date()).append(&quot;&lt;/p&gt;&quot;);</span>
+<span class="nc" id="L33">        html.append(&quot;&lt;p&gt;Total vulnerabilities detected: &quot;).append(results.size()).append(&quot;&lt;/p&gt;&quot;);</span>
+
+        // Table untuk results
+<span class="nc" id="L36">        html.append(&quot;&lt;table&gt;&quot;);</span>
+<span class="nc" id="L37">        html.append(&quot;&lt;tr&gt;&lt;th&gt;Payload&lt;/th&gt;&lt;th&gt;Vulnerability Type&lt;/th&gt;&lt;th&gt;Severity&lt;/th&gt;&lt;th&gt;Status&lt;/th&gt;&lt;/tr&gt;&quot;);</span>
+
+<span class="nc" id="L39">        int highCount = 0, mediumCount = 0, lowCount = 0;</span>
+<span class="nc bnc" id="L40" title="All 2 branches missed.">        for (VulnResult result : results) {</span>
+<span class="nc" id="L41">            String severityClass = &quot;&quot;;</span>
+<span class="nc" id="L42">            String status = &quot;None&quot;;</span>
+<span class="nc bnc" id="L43" title="All 2 branches missed.">            if (&quot;High&quot;.equals(result.getSeverity())) {</span>
+<span class="nc" id="L44">                severityClass = &quot; class='high'&quot;;</span>
+<span class="nc" id="L45">                highCount++;</span>
+<span class="nc" id="L46">                status = &quot;Vulnerable!&quot;;</span>
+<span class="nc bnc" id="L47" title="All 2 branches missed.">            } else if (&quot;Medium&quot;.equals(result.getSeverity())) {</span>
+<span class="nc" id="L48">                severityClass = &quot; class='medium'&quot;;</span>
+<span class="nc" id="L49">                mediumCount++;</span>
+<span class="nc bnc" id="L50" title="All 2 branches missed.">            } else if (&quot;Low&quot;.equals(result.getSeverity())) {</span>
+<span class="nc" id="L51">                severityClass = &quot; class='low'&quot;;</span>
+<span class="nc" id="L52">                lowCount++;</span>
+            }
+
+<span class="nc" id="L55">            html.append(&quot;&lt;tr&gt;&quot;);</span>
+<span class="nc" id="L56">            html.append(&quot;&lt;td&gt;&quot;).append(escapeHtml(result.getType())) // Placeholder payload; sesuaikan jika butuh</span>
+<span class="nc" id="L57">                .append(&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L58">            html.append(&quot;&lt;td&gt;&quot;).append(result.getType()).append(&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L59">            html.append(&quot;&lt;td&quot;).append(severityClass).append(&quot;&gt;&quot;).append(result.getSeverity()).append(&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L60">            html.append(&quot;&lt;td&gt;&quot;).append(status).append(&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L61">            html.append(&quot;&lt;/tr&gt;&quot;);</span>
+<span class="nc" id="L62">        }</span>
+<span class="nc" id="L63">        html.append(&quot;&lt;/table&gt;&quot;);</span>
+
+        // Summary
+<span class="nc" id="L66">        html.append(&quot;&lt;h2&gt;Summary&lt;/h2&gt;&quot;);</span>
+<span class="nc" id="L67">        html.append(&quot;&lt;ul&gt;&lt;li&gt;High: &quot;).append(highCount).append(&quot;&lt;/li&gt;&quot;);</span>
+<span class="nc" id="L68">        html.append(&quot;&lt;li&gt;Medium: &quot;).append(mediumCount).append(&quot;&lt;/li&gt;&quot;);</span>
+<span class="nc" id="L69">        html.append(&quot;&lt;li&gt;Low/None: &quot;).append(lowCount).append(&quot;&lt;/li&gt;&lt;/ul&gt;&quot;);</span>
+
+<span class="nc" id="L71">        html.append(&quot;&lt;/body&gt;&lt;/html&gt;&quot;);</span>
+
+        // Tulis ke file
+<span class="nc" id="L74">        Files.write(Paths.get(REPORT_FILE), html.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);</span>
+<span class="nc" id="L75">        System.out.println(&quot;Report saved to: &quot; + REPORT_FILE);</span>
+<span class="nc" id="L76">    }</span>
+
+    // Helper: Escape HTML untuk aman (hindari XSS di report)
+    private String escapeHtml(String input) {
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (input == null) return &quot;&quot;;</span>
+<span class="nc" id="L81">        return input.replace(&quot;&amp;&quot;, &quot;&amp;amp;&quot;).replace(&quot;&lt;&quot;, &quot;&amp;lt;&quot;).replace(&quot;&gt;&quot;, &quot;&amp;gt;&quot;).replace(&quot;\&quot;&quot;, &quot;&amp;quot;&quot;);</span>
+    }
+
+    // Opsional: Method untuk generate JSON report
+    // public void generateJSONReport(List&lt;VulnResult&gt; results) { ... } – tambah jika perlu
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>
