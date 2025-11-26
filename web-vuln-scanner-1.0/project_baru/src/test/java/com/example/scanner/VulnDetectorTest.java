@@ -38,7 +38,7 @@ public class VulnDetectorTest {
     @Test
     public void testDetectXSSNoVuln() {
         String payload = "normal input";
-        String response = "Hello normal input";
+        String response = " This is a normal input";
         VulnResult result = detector.detectXSS(response, payload);
         assertEquals("None", result.getType());
     }
