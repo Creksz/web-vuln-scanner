@@ -30,7 +30,7 @@ public class VulnDetectorTest {
     @Test
     public void testDetectXSSReflected() {
         String payload = "<script>alert('XSS')</script>";
-        String response = "Hello " + payload;
+        String response =" This is" + payload;
         VulnResult result = detector.detectXSS(response, payload);
         assertEquals("XSS", result.getType());
     }
